@@ -32,15 +32,16 @@ class lfi(object):
     freqs = [30, 44, 70]
     horns = {30:[27, 28], 44:[24, 25, 26], 70:[18, 19, 20, 21, 22, 23]}
     hornTypes = ['M', 'S']
+    diodeTypes = {'M':['00', '01'], 'S':['10', '11']}
     npsi = 4096
-    ntodsigma = 100
+    ntodsigma = 1
     nsides = {30:512, 44:512, 70:1024}
     #compression arrays 
     huffman = ['huffman', {'dictNum':1}]
     huffTod = ['huffman', {'dictNum':2}]
     psiDigitize = ['digitize', {'min':0, 'max':2*np.pi,'nbins':npsi}]
-    todDytpe = ['dtype', {'dtype':'f4'}]
-    todSigma = ['sigma', {'sigma0':None, 'nsigma':ntodsigma}] 
+    todDtype = ['dtype', {'dtype':'f4'}]
+    todSigma = ['sigma', {'sigma0':None, 'nsigma':ntodsigma, 'offset':None}] 
     #fwhm, elipticity and psi_ell from https://www.aanda.org/articles/aa/full_html/2016/10/aa25809-15/T6.html
     fwhms = {'18M':13.44, '18S':13.5, '19M':13.14, '19S':13.07, '20M':12.84, '20S':12.84, '21M':12.77, '21S':12.87, '22M':12.92, '22S':12.97, '23M':13.35, '23S':13.36, '24M':23.18, '24S':23.04, '25M':30.23, '25S':30.94, '26M':30.29, '26S':30.64, '27M':32.02, '27S':33.11, '28M':33.1, '28S':33.09}
 

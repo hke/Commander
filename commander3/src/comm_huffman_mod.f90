@@ -23,18 +23,145 @@ module comm_huffman_mod
   implicit none
 
   private
-  public huffcode, huffman_decode, huffman_decode2, hufmak, get_bitstring, hufmak_precomp
+  public huffcode, huffman_decode, huffman_decode2, hufmak, get_bitstring, hufmak_precomp, huffman_decode3
 
+
+  !TODO: this needs to be generalized somehow to support a sp symbols case 
   type huffcode
      integer(i4b) :: nch, nodemax
      integer(i4b), allocatable, dimension(:) :: icode,left,iright,ncode,symbols,nfreq
   end type huffcode
 
+  interface huffman_decode2
+     procedure huffman_decode2_int, huffman_decode2_sp
+  end interface huffman_decode2
 
 contains
 
   ! Public routines
-  subroutine huffman_decode2(hcode, x_in, x_out, imod, offset)
+  subroutine huffman_decode2_int(hcode, x_in, x_out, imod)
+    implicit none
+    type(huffcode),               intent(in)  :: hcode
+    byte,           dimension(:), intent(in)  :: x_in
+    integer(i4b),   dimension(:), intent(out) :: x_out
+    integer(i4b),                 intent(in), optional :: imod
+
+    integer(i4b) :: i, j, k, n, nb, ich, l,nc,node
+    integer(i4b), allocatable, dimension(:) :: buf
+
+    n  = size(x_out)
+    
+    i = 2 ! Byte counter
+    j = 7 ! Bit counter
+    do k = 1, n
+       node=hcode%nodemax
+       do while (node > hcode%nch)
+          if (btest(x_in(i),j)) then 
+             node=hcode%iright(node) 
+          else
+             node=hcode%left(node)
+          end if
+          j = j-1
+          if (j == -1) then
+             i = i+1
+             j = 7
+          end if
+       end do
+       x_out(k) = hcode%symbols(node) 
+       if (k > 1)         x_out(k) = x_out(k-1) + x_out(k)
+       if (present(imod)) x_out(k) = iand(x_out(k),imod)
+    end do
+
+  end subroutine huffman_decode2_int
+
+  !subroutine huffman_decode_vlen(hcode, x_in, x_out)
+  !  implicit none
+  !  type(huffcode),               intent(in)  :: hcode
+  !  
+  !  real(sp),       dimension(:), intent(out) :: x_out
+
+
+  !end subroutine huffman_decode_vlen
+
+  subroutine huffman_decode2_sp(hcode, x_in, x_out)
+    implicit none
+    type(huffcode),               intent(in)  :: hcode
+    byte,           dimension(:), intent(in)  :: x_in
+    real(sp),       dimension(:), intent(out) :: x_out
+
+    integer(i4b) :: i, j, k, n, nb, ich, l,nc,node, curr, prev
+    integer(i4b), allocatable, dimension(:) :: buf
+
+    n  = size(x_out)
+   
+    write(*,*) x_in(1:100), hcode%nodemax, hcode%symbols(1:100)
+ 
+    i = 2 ! Byte counter
+    j = 7 ! Bit counter
+    curr = 0
+    do k = 1, n
+       node=hcode%nodemax
+       do while (node > hcode%nch)
+          if (btest(x_in(i),j)) then 
+             node=hcode%iright(node) 
+          else
+             node=hcode%left(node)
+          end if
+          j = j-1
+          if (j == -1) then
+             i = i+1
+             j = 7
+          end if
+       end do
+       x_out(k) = hcode%symbols(node)
+       if (k > 1) x_out(k) = x_out(k-1) + x_out(k)
+    end do
+
+  end subroutine huffman_decode2_sp
+
+
+  ! Public routines
+  subroutine huffman_decode4(hcode, x_in, x_out, imod)
+    implicit none
+    type(huffcode),               intent(in)  :: hcode
+    byte,           dimension(:), intent(in)  :: x_in
+    integer(i4b),   dimension(:), intent(out) :: x_out
+    integer(i4b),                 intent(in), optional :: imod
+
+    integer(i4b) :: i, j, k, n, nb, ich, l,nc,node
+    integer(i4b), allocatable, dimension(:) :: buf
+
+!!$    if (.not. present(offset)) then
+!!$      offset_ = 0
+!!$    else
+!!$      offset_ = offset
+!!$    end if
+
+    n  = size(x_out)
+    k = 1
+    node=hcode%nodemax
+    do i = 2, size(x_in)  ! First byte does not contain real data
+       do j = 7, 0, -1
+          if (btest(x_in(i),j)) then 
+             node=hcode%iright(node) 
+          else
+             node=hcode%left(node)
+          end if
+          if (node <= hcode%nch) then
+             x_out(k) = hcode%symbols(node)
+             if (k > 1)         x_out(k) = x_out(k-1) + x_out(k)
+             if (present(imod)) x_out(k) = iand(x_out(k),imod)
+             k    = k + 1
+             if (k > n) return
+             node = hcode%nodemax
+          end if
+       end do
+    end do
+
+  end subroutine huffman_decode4
+
+  ! Public routines
+  subroutine huffman_decode3(hcode, x_in, x_out, imod, offset)
     implicit none
     type(huffcode),               intent(in)  :: hcode
     byte,           dimension(:), intent(in)  :: x_in
@@ -86,7 +213,15 @@ contains
           else
              node=hcode%left(node)
           end if
-          if (node <= hcode%nch) then
+          if (node == 0) then ! case where there was a single entry ie. all 0
+             buf(k) = 0
+             k = k+1
+             if (k > n+offset_) then
+               x_out(1:n) = buf(1+offset_:n+offset_)
+               return
+             end if
+             node = hcode%nodemax
+          else if (node <= hcode%nch) then
              buf(k) = hcode%symbols(node)
              if (k > 1)         buf(k) = buf(k-1) + buf(k)
              if (present(imod)) buf(k) = iand(buf(k),imod)
@@ -100,7 +235,7 @@ contains
        end do
     end do
 
-  end subroutine huffman_decode2
+  end subroutine huffman_decode3
 
 
   ! Public routines

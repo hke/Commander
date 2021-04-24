@@ -50,14 +50,14 @@ export MPCC := mpiicc
 # =========== Compiler Optimizations =============
 #main
 #
-export F90FLAGS := -fpe0 -march=native -g -O2 -traceback -assume byterecl -heap-arrays 16384 -qopenmp -parallel -lmkl 
+#export F90FLAGS := -fpe0 -march=native -g -O2 -traceback -assume byterecl -heap-arrays 16384 -qopenmp -parallel -lmkl -xHost 
 
 #debug
 #
-#export F90FLAGS := -fpe0 -march=native -g -C -traceback -assume byterecl -heap-arrays 16384 -qopenmp -parallel -lmkl -fpe0
+export F90FLAGS := -fpe0 -march=native -g -C -traceback -assume byterecl -heap-arrays 16384 -qopenmp -parallel -lmkl -fpe0
 
 
-#export F90FLAGS := -fpe0 -march=native -C -g -check noarg_temp_created -traceback -assume byterecl -heap-arrays 16384 -qopenmp -parallel -lmkl 
+#export F90FLAGS := -fpe0 -march=native -C -g -check noarg_temp_created -traceback -assume byterecl -heap-arrays 16384 -qopenmp -parallel -lmkl -ftrapuv
 #export F90FLAGS := -check bounds -CB -check format -check pointers -check uninit -check output_conversion -assume byterecl -traceback -heap-arrays 16384 -fpe0 -O0 -g -traceback -assume byterecl -heap-arrays 16384 -qopenmp
 #export F90FLAGS := -check all -O0 -g -traceback -assume byterecl -heap-arrays 16384 -qopenmp -ftrapuv -debug all -diag-disable 406
 
@@ -89,7 +89,7 @@ export LOCAL=../../build
 
 # The include and linking commands for cfitsio.
 export CFITSIO_INCLUDE := 
-export CFITSIO_LINK := -L$(LOCAL)/lib -lcfitsio -lcurl
+export CFITSIO_LINK := -L$(LOCAL)/lib -lcfitsio 
 
 # =============== SHARP Linking ================
 
@@ -123,10 +123,10 @@ export HEALPIX_LINK := -L$(HEALPIX)/lib -lhealpix
 
 # =============== HDF ============================                              
 #export LOCAL=/mn/stornext/u3/hke/owl/local
-export HDF_LINK := -L$(LOCAL)/lib -lhdf5_fortran -lhdf5
+export HDF_LINK := -L$(LOCAL)/lib/shared -lhdf5_fortran -lhdf5 -lhdf5_f90cstub
 export HDF_LINK_CPP := -L$(LOCAL)/lib -lhdf5_cpp -lhdf5
-export HDF_INCLUDE := -I$(LOCAL)/include
+export HDF_INCLUDE := -I$(LOCAL)/include/shared
 
 # =============== CAMB ============================                              
-export CAMB_LINK := -L$(LOCAL)/src/CAMB/fortran/Release -lcamb
-export CAMB_INCLUDE := -I$(LOCAL)/src/CAMB/fortran/Release -I$(LOCAL)/src/CAMB/forutils/Release
+export CAMB_LINK := -L$(LOCAL)/local/lib -lcamb
+export CAMB_INCLUDE := -I$(LOCAL)/mod

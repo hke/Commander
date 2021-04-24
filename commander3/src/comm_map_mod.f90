@@ -331,13 +331,14 @@ contains
     
   end function constructor_map
 
-  function constructor_alms(info, h5_file, hdf, field, label)
+  function constructor_alms(info, h5_file, hdf, field, label, lmax_file)
     implicit none
     class(comm_mapinfo),                intent(inout), target   :: info
     type(hdf_file),                     intent(in), target   :: h5_file
     character(len=*),                   intent(in)           :: label
     logical(lgt),                       intent(in)           :: hdf
     character(len=*),                  intent(in)           :: field
+    integer(i4b),                      intent(in), optional :: lmax_file
     class(comm_map),     pointer                      :: constructor_alms
     !character(len=80),   dimension(:,:) , allocatable :: header
     integer(i4b)                                      :: mmax, lmax, ierr
@@ -350,30 +351,28 @@ contains
     allocate(constructor_alms%map(0:info%np-1,info%nmaps))
     allocate(constructor_alms%alm(0:info%nalm-1,info%nmaps))
 
-    info%mmax = 0
+!    info%mmax = 0
 
     if( hdf ) then
       !write(*,*) 'About to call read_hdf'
-      if(info%myid == 0) then
-        call read_hdf(h5_file,trim(label) // '/' // trim(field) // 'mmax', mmax)
-        call read_hdf(h5_file,trim(label) // '/' // trim(field) // 'lmax', lmax)
-      end if
-      call mpi_bcast(mmax, 1, MPI_INTEGER, 0, info%comm, ierr)
-      call mpi_bcast(lmax, 1, MPI_INTEGER, 0, info%comm, ierr)
+!!$      if(info%myid == 0) then
+!!$        call read_hdf(h5_file,trim(label) // '/' // trim(field) // 'mmax', mmax)
+!!$        call read_hdf(h5_file,trim(label) // '/' // trim(field) // 'lmax', lmax)
+!!$      end if
+!!$      call mpi_bcast(mmax, 1, MPI_INTEGER, 0, info%comm, ierr)
+!!$      call mpi_bcast(lmax, 1, MPI_INTEGER, 0, info%comm, ierr)
       !bcast mmax, lmax to all cores
 
       
-      info%lmax = lmax
-      info%mmax = mmax
-      call constructor_alms%readHDF_mmax(h5_file, label // '/' // trim(field) // '/T', mmax, 1)
-      call constructor_alms%readHDF_mmax(h5_file, label // '/' // trim(field) // '/E', mmax, 2)
-      call constructor_alms%readHDF_mmax(h5_file, label // '/' // trim(field) // '/B', mmax, 3)
+!!$      info%lmax = lmax
+!!$      info%mmax = mmax
+      call constructor_alms%readHDF_mmax(h5_file, label // '/' // trim(field) // '/T', mmax, 1, lmax_file=lmax_file)
+      call constructor_alms%readHDF_mmax(h5_file, label // '/' // trim(field) // '/E', mmax, 2, lmax_file=lmax_file)
+      call constructor_alms%readHDF_mmax(h5_file, label // '/' // trim(field) // '/B', mmax, 3, lmax_file=lmax_file)
     else 
       constructor_alms%alm = 0.d0
-      mmax = info%lmax
 
     end if
-    info%mmax = mmax
     constructor_alms%map = 0.d0
 
   end function constructor_alms
@@ -904,20 +903,21 @@ contains
     end if
   end subroutine readHDF
 
-  subroutine readHDF_mmax(self, hdffile, hdfpath, mmax, pol)
+  subroutine readHDF_mmax(self, hdffile, hdfpath, mmax, pol, lmax_file)
     implicit none
     
     class(comm_map),        intent(inout) :: self
     type(hdf_file),         intent(in)    :: hdffile
     character(len=*),       intent(in)    :: hdfpath
     integer(i4b),           intent(in)    :: mmax, pol
+    integer(i4b),           intent(in), optional    :: lmax_file
 
     integer(i4b) :: i, l, m, j, lmax, nmaps, ierr, nalm
     real(dp),     allocatable, dimension(:) :: alms
     !integer(i4b), allocatable, dimension(:)   :: p
     !integer(i4b), dimension(MPI_STATUS_SIZE)  :: mpistat
 
-    lmax  = self%info%lmax
+    lmax  = self%info%lmax; if (present(lmax_file)) lmax = lmax_file
     nmaps = 1 
     nalm = (lmax+1)**2
     
@@ -925,7 +925,7 @@ contains
     allocate(alms(0:nalm-1))
     if (self%info%myid == 0) call read_hdf(hdffile, trim(adjustl(hdfpath)), alms, opt=.true.)
     call mpi_bcast(alms, size(alms),  MPI_DOUBLE_PRECISION, 0, self%info%comm, ierr)
-    if(.not. allocated(self%info%lm)) allocate(self%info%lm(2, 0:self%info%nalm-1))
+    !if(.not. allocated(self%info%lm)) allocate(self%info%lm(2, 0:self%info%nalm-1))
     do i = 0, self%info%nalm-1
        call self%info%i2lm(i, l, m)
        j = l**2 + l + m

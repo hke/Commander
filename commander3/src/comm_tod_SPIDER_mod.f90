@@ -49,11 +49,7 @@ module comm_tod_SPIDER_mod
   type, extends(comm_tod) :: comm_SPIDER_tod
      !class(orbdipole_pointer), allocatable :: orb_dp !orbital dipole calculator
    contains
-     procedure     :: process_tod        => process_SPIDER_tod
-     procedure     :: read_tod_inst      => read_tod_inst_SPIDER
-     procedure     :: read_scan_inst     => read_scan_inst_SPIDER
-     procedure     :: initHDF_inst       => initHDF_SPIDER
-     procedure     :: dumpToHDF_inst     => dumpToHDF_SPIDER
+     procedure     :: process_tod          => process_SPIDER_tod
   end type comm_SPIDER_tod
 
   interface comm_SPIDER_tod
@@ -143,6 +139,7 @@ contains
    !  constructor%ndet     = num_tokens(cpar%ds_tod_dets(id_abs), ",") ! Harald
     constructor%ndet     = count_lines(cpar%ds_tod_dets(id_abs),datadir)
     constructor%nhorn    = 1
+    constructor%ndiode   = 1
     allocate(constructor%stokes(constructor%nmaps))
     allocate(constructor%w(constructor%nmaps,constructor%nhorn,constructor%ndet))
     allocate(constructor%label(constructor%ndet))
@@ -183,7 +180,6 @@ contains
     allocate(constructor%fwhm(constructor%ndet))
     allocate(constructor%elip(constructor%ndet))
     allocate(constructor%psi_ell(constructor%ndet))
-    allocate(constructor%mb_eff(constructor%ndet))
     allocate(constructor%nu_c(constructor%ndet))
     
     call open_hdf_file(constructor%instfile, h5_file, 'r')
@@ -242,12 +238,9 @@ contains
        call read_hdf(h5_file, trim(adjustl(constructor%label(i)))//'/'//'fwhm', constructor%fwhm(i))
        call read_hdf(h5_file, trim(adjustl(constructor%label(i)))//'/'//'elip', constructor%elip(i))
        call read_hdf(h5_file, trim(adjustl(constructor%label(i)))//'/'//'psi_ell', constructor%psi_ell(i))
-       call read_hdf(h5_file, trim(adjustl(constructor%label(i)))//'/'//'mbeam_eff', constructor%mb_eff(i))
        call read_hdf(h5_file, trim(adjustl(constructor%label(i)))//'/'//'centFreq', constructor%nu_c(i))
     end do
 
-    constructor%mb_eff = 1.d0 
-    constructor%mb_eff = constructor%mb_eff / mean(constructor%mb_eff)
     constructor%nu_c   = constructor%nu_c * 1d9
 
     call close_hdf_file(h5_file)
@@ -1036,8 +1029,8 @@ contains
                if (.not. self%scans(i)%d(j)%accept) cycle
                s_buf(:,j) =  s_sl(:,j) + s_orb(:,j) 
                 if (do_oper(samp_mono)) s_buf(:,j) =  s_buf(:,j) + s_mono(:,j)
-                call self%compute_chisq(i, j, 1.0-flag(:,j), s_sky(:,j), &
-                     & s_buf(:,j), n_corr(:,j), s_jump(:,j))
+!!$                call self%compute_chisq(i, j, 1.0-flag(:,j), s_sky(:,j), &
+!!$                     & s_buf(:,j), n_corr(:,j), s_jump(:,j))
 
                 call write2file(trim(chaindir)//'/chisq_'//trim(run_label)//'.txt',  iter, self%scans(i)%d(j)%chisq) 
                !  call write2file(trim(dir_name)//'sigma0_'//trim(run_label)//'.txt', iter, self%scans(i)%d(j)%sigma0) 
@@ -1088,12 +1081,12 @@ contains
                 if (.not. self%scans(i)%d(j)%accept) cycle
                 s_buf(:,j) =  s_sl(:,j) + s_orb(:,j)
                 if (do_oper(samp_mono)) s_buf(:,j) =  s_buf(:,j) + s_mono(:,j)
-                call self%compute_chisq(i, j, mask2(:,j), s_sky(:,j), &
-                     & s_buf(:,j), n_corr(:,j), absbp=.true.)
+!!$                call self%compute_chisq(i, j, mask2(:,j), s_sky(:,j), &
+!!$                     & s_buf(:,j), n_corr(:,j), absbp=.true.)
                 chisq_S(j,1) = chisq_S(j,1) + self%scans(i)%d(j)%chisq_prop
                 do k = 2, ndelta
-                   call self%compute_chisq(i, j, mask2(:,j), s_sky_prop(:,j,k), &
-                        & s_buf(:,j), n_corr(:,j), absbp=.true.)
+!!$                   call self%compute_chisq(i, j, mask2(:,j), s_sky_prop(:,j,k), &
+!!$                        & s_buf(:,j), n_corr(:,j), absbp=.true.)
                    chisq_S(j,k) = chisq_S(j,k) + self%scans(i)%d(j)%chisq_prop
                 end do
              end do
@@ -1504,103 +1497,6 @@ subroutine write2file(filename, iter, param)
 
    close(unit)
  end subroutine write2file
-
-
-  subroutine read_tod_inst_SPIDER(self, file)
-    ! 
-    ! Reads SPIDER-specific common fields from TOD fileset
-    ! 
-    ! Arguments:
-    ! ----------
-    ! self:     derived class (comm_SPIDER_tod)
-    !           SPIDER-specific TOD object
-    ! file:     derived type (hdf_file)
-    !           Already open HDF file handle; only root includes this
-    !
-    ! Returns
-    ! ----------
-    ! None, but updates self
-    !
-    implicit none
-    class(comm_SPIDER_tod),              intent(inout)          :: self
-    type(hdf_file),                      intent(in),   optional :: file
-  end subroutine read_tod_inst_SPIDER
-  
-  subroutine read_scan_inst_SPIDER(self, file, slabel, detlabels, scan)
-    ! 
-    ! Reads SPIDER-specific scan information from TOD fileset
-    ! 
-    ! Arguments:
-    ! ----------
-    ! self:     derived class (comm_SPIDER_tod)
-    !           SPIDER-specific TOD object
-    ! file:     derived type (hdf_file)
-    !           Already open HDF file handle
-    ! slabel:   string
-    !           Scan label, e.g., "000001/"
-    ! detlabels: string (array)
-    !           Array of detector labels, e.g., ["27M", "27S"]
-    ! scan:     derived class (comm_scan)
-    !           Scan object
-    !
-    ! Returns
-    ! ----------
-    ! None, but updates scan object
-    !
-    implicit none
-    class(comm_SPIDER_tod),              intent(in)    :: self
-    type(hdf_file),                      intent(in)    :: file
-    character(len=*),                    intent(in)    :: slabel
-    character(len=*), dimension(:),      intent(in)    :: detlabels
-    class(comm_scan),                    intent(inout) :: scan
-  end subroutine read_scan_inst_SPIDER
-
-  subroutine initHDF_SPIDER(self, chainfile, path)
-    ! 
-    ! Initializes SPIDER-specific TOD parameters from existing chain file
-    ! 
-    ! Arguments:
-    ! ----------
-    ! self:     derived class (comm_SPIDER_tod)
-    !           SPIDER-specific TOD object
-    ! chainfile: derived type (hdf_file)
-    !           Already open HDF file handle to existing chainfile
-    ! path:   string
-    !           HDF path to current dataset, e.g., "000001/tod/030"
-    !
-    ! Returns
-    ! ----------
-    ! None
-    !
-    implicit none
-    class(comm_SPIDER_tod),              intent(inout)  :: self
-    type(hdf_file),                      intent(in)     :: chainfile
-    character(len=*),                    intent(in)     :: path
-  end subroutine initHDF_SPIDER
-  
-  subroutine dumpToHDF_SPIDER(self, chainfile, path)
-    ! 
-    ! Writes SPIDER-specific TOD parameters to existing chain file
-    ! 
-    ! Arguments:
-    ! ----------
-    ! self:     derived class (comm_SPIDER_tod)
-    !           SPIDER-specific TOD object
-    ! chainfile: derived type (hdf_file)
-    !           Already open HDF file handle to existing chainfile
-    ! path:   string
-    !           HDF path to current dataset, e.g., "000001/tod/030"
-    !
-    ! Returns
-    ! ----------
-    ! None
-    !
-    implicit none
-    class(comm_SPIDER_tod),              intent(in)     :: self
-    type(hdf_file),                      intent(in)     :: chainfile
-    character(len=*),                    intent(in)     :: path
-  end subroutine dumpToHDF_SPIDER
-
 
 
 end module comm_tod_SPIDER_mod

@@ -27,7 +27,7 @@
 #------------------------------------------------------------------------------
 # Getting CAMB from source
 #------------------------------------------------------------------------------
-# We need to build CAMb as only either static or shared library for this to work
+# We need to build CAMB as only either static or shared library for this to work
 ExternalProject_Add(camb
 	DEPENDS required_libraries 
 					curl
@@ -53,9 +53,15 @@ ExternalProject_Add(camb
 		-DBUILD_SHARED_LIBS:BOOL=OFF
 		# Specifying compilers
 		-DCMAKE_Fortran_COMPILER=${CMAKE_Fortran_COMPILER}
+		-DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+		-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
 		-DBUILD_SHARED_LIBS:BOOL=OFF
 		# Check submodules during build
 		-DGIT_SUBMODULE:BOOL=ON
+		# CFitsIO paths
+		#-DCFITSIO_FOUND:BOOL=TRUE
+		-DCFITSIO_LIBRARIES:FILEPATH=${CFITSIO_LIBRARIES}
+		-DCFITSIO_INCLUDE_DIRS:PATH=${CFITSIO_INCLUDE_DIRS}
 		# HEALPix Paths
 		-DHEALPIX_LIBRARIES:FILEPATH=${HEALPIX_LIBRARIES}
 		-DHEALPIX_INCLUDE_DIRS:PATH=${HEALPIX_INCLUDE_DIRS}

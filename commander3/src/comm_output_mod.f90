@@ -265,8 +265,8 @@ contains
                 !all maps in the same poltype has the same theta, only evaluate p_min
                 if (p_min > c%nmaps) cycle
                 call mpi_reduce(sum(c%theta(i)%p%map(:,p_min)), theta_sum, 1, MPI_DOUBLE_PRECISION, MPI_SUM, 0, cpar%comm_chain, ierr)
-                write(temptxt,fmt='(e20.7)') theta_sum/c%theta(i)%p%info%npix
                 if (cpar%myid_chain == 0) then 
+                   write(temptxt,fmt='(e20.7)') theta_sum/c%theta(i)%p%info%npix
                    outline = trim(outline)//trim(temptxt)
                 end if
              end do

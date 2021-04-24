@@ -163,7 +163,7 @@ set(healpix_md5 "bdcc2a4b1ede3ed5a07be57e4aec01d2")
 #------------------------------------------------------------------------------
 # CAMB with custom CMake support
 set(camb_git_url "https://github.com/maksymbrl/CAMB.git")
-set(camb_git_tag "3e68d260eb87ea376ab1997d6dc653fbbc5be52b")
+set(camb_git_tag "36cc4e546427b9b30359473be628d506b09eb658")
 #------------------------------------------------------------------------------
 # Doxygen
 #------------------------------------------------------------------------------

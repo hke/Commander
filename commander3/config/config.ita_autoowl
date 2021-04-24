@@ -10,6 +10,51 @@
 # install_$COMMANDER.
 #export INSTALL := /usr/local
 
+# To be used with the 'install_owl.sh' cmake script
+		
+ifeq ($(HOSTNAME), owl36.uio.no)
+	export LOCAL=../../build_owl3637/install
+else ifeq ($(HOSTNAME), owl37.uio.no)
+	export LOCAL=../../build_owl3637/install
+else ifeq ($(HOSTNAME), owl35.uio.no)
+	export LOCAL=../../build_owl3135/install
+else ifeq ($(HOSTNAME), owl34.uio.no)
+	export LOCAL=../../build_owl3135/install
+else ifeq ($(HOSTNAME), owl33.uio.no)
+	export LOCAL=../../build_owl3135/install
+else ifeq ($(HOSTNAME), owl32.uio.no)
+	export LOCAL=../../build_owl3135/install
+else ifeq ($(HOSTNAME), owl31.uio.no)
+	export LOCAL=../../build_owl3135/install
+else ifeq ($(HOSTNAME), owl30.uio.no)
+	export LOCAL=../../build_owl2930/install
+else ifeq ($(HOSTNAME), owl29.uio.no)
+	export LOCAL=../../build_owl2930/install
+else ifeq ($(HOSTNAME), owl28.uio.no)
+	export LOCAL=../../build_owl2528/install
+else ifeq ($(HOSTNAME), owl27.uio.no)
+	export LOCAL=../../build_owl2528/install
+else ifeq ($(HOSTNAME), owl26.uio.no)
+	export LOCAL=../../build_owl2528/install
+else ifeq ($(HOSTNAME), owl25.uio.no)
+	export LOCAL=../../build_owl2528/install
+else ifeq ($(HOSTNAME), owl24.uio.no)
+	export LOCAL=../../build_owl1724/install
+else ifeq ($(HOSTNAME), owl23.uio.no)
+	export LOCAL=../../build_owl1724/install
+else ifeq ($(HOSTNAME), owl22.uio.no)
+	export LOCAL=../../build_owl1724/install
+else ifeq ($(HOSTNAME), owl21.uio.no)
+	export LOCAL=../../build_owl1724/install
+else ifeq ($(HOSTNAME), owl20.uio.no)
+	export LOCAL=../../build_owl1724/install
+else ifeq ($(HOSTNAME), owl19.uio.no)
+	export LOCAL=../../build_owl1724/install
+else ifeq ($(HOSTNAME), owl18.uio.no)
+	export LOCAL=../../build_owl1724/install
+else ifeq ($(HOSTNAME), owl17.uio.no)
+	export LOCAL=../../build_owl1724/install
+endif
 
 # =============== System Tools ===================
 
@@ -49,14 +94,14 @@ export MPCC := mpiicc
 
 # =========== Compiler Optimizations =============
 #main
+#
 export F90FLAGS := -fpe0 -march=native -g -O2 -traceback -assume byterecl -heap-arrays 16384 -qopenmp -parallel -lmkl 
 
 #debug
 #
 #export F90FLAGS := -fpe0 -march=native -g -C -traceback -assume byterecl -heap-arrays 16384 -qopenmp -parallel -lmkl -fpe0
 
-
-#export F90FLAGS := -fpe0 -march=native -O2 -CB -g -traceback -assume byterecl -heap-arrays 16384 -qopenmp -parallel -lmkl 
+#export F90FLAGS := -fpe0 -march=native -C -g -check noarg_temp_created -traceback -assume byterecl -heap-arrays 16384 -qopenmp -parallel -lmkl -ftrapuv
 #export F90FLAGS := -check bounds -CB -check format -check pointers -check uninit -check output_conversion -assume byterecl -traceback -heap-arrays 16384 -fpe0 -O0 -g -traceback -assume byterecl -heap-arrays 16384 -qopenmp
 #export F90FLAGS := -check all -O0 -g -traceback -assume byterecl -heap-arrays 16384 -qopenmp -ftrapuv -debug all -diag-disable 406
 
@@ -82,21 +127,19 @@ export MPFCLIBS := -qopenmp
 # instead of lowercase (*.mod).
 #export FORTRAN_UPPER := 1
 
-export LOCAL=/mn/stornext/u3/hke/local_intel3
-
 # =============== CFITSIO Linking ================
 
 # The include and linking commands for cfitsio.
 export CFITSIO_INCLUDE := 
-export CFITSIO_LINK := -L$(LOCAL)/lib -lcfitsio -lcurl
+export CFITSIO_LINK := -L$(LOCAL)/lib -lcfitsio 
 
 # =============== SHARP Linking ================
 
 # The include and linking commands for cfitsio.
 export SHARP_INCLUDE := 
-#export SHARP_LINK := -L/mn/stornext/u3/hke/local/src/libsharp-1.0.0/.libs/ -lsharp
-export SHARP_LINK := -L/mn/stornext/u3/hke/local_intel3/src/libsharp-master/.libs -lsharp2 
-
+#export SHARP_LINK := -L$(LOCAL)/lib/ -lsharp
+export SHARP_LINK := -L$(LOCAL)/healpix/lib -lsharp
+#export SHARP_LINK := 
 
 # =============== LAPACK Linking =================
 
@@ -105,11 +148,9 @@ MKLPATH := $(MKLROOT)
 export LAPACK_INCLUDE := 
 export LAPACK_LINK := -shared-intel -Wl,-rpath,$(MKLPATH)/lib/intel64 -L$(MKLPATH)/lib/intel64  -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -lpthread 
 
-
-
 # ================ Healpix linking ================
 #export HEALPIX := /mn/stornext/u3/hke/owl/local/src/dagsshealpix
-export HEALPIX := /mn/stornext/u3/hke/local_intel3/src/Healpix_3.50
+export HEALPIX := $(LOCAL)/healpix
 export HEALPIX_INCLUDE := -I$(HEALPIX)/include
 export HEALPIX_LINK := -L$(HEALPIX)/lib -lhealpix
 #export HEALPIX_INCLUDE := -I/usit/titan/u1/sigurdkn/local/include
@@ -119,14 +160,12 @@ export HEALPIX_LINK := -L$(HEALPIX)/lib -lhealpix
 #export HEALPIX_INCLUDE := -I/usit/titan/u1/hke/local/src/Healpix_2.10/src/f90/mod
 #export HEALPIX_LINK := -L/usit/titan/u1/hke/local/src/Healpix_2.10/src/f90/mod -lhealpix
 
-
 # =============== HDF ============================                              
 #export LOCAL=/mn/stornext/u3/hke/owl/local
-export HDF_LINK := -L$(LOCAL)/lib -lhdf5_fortran -lhdf5
+export HDF_LINK := -L$(LOCAL)/lib/shared -lhdf5_fortran -lhdf5 -lhdf5_f90cstub
 export HDF_LINK_CPP := -L$(LOCAL)/lib -lhdf5_cpp -lhdf5
-export HDF_INCLUDE := -I$(LOCAL)/include
+export HDF_INCLUDE := -I$(LOCAL)/include/shared
 
 # =============== CAMB ============================                              
-export CAMB_LINK := -L/mn/stornext/d16/cmbco/bp/mathew/commander3/install/lib -lcamb
-export CAMB_INCLUDE := -I/mn/stornext/d16/cmbco/bp/mathew/commander3/install/mod
-#
+export CAMB_LINK := -L$(LOCAL)/local/lib -lcamb
+export CAMB_INCLUDE := -I$(LOCAL)/mod

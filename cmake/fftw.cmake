@@ -50,7 +50,8 @@ if(NOT FFTW_FOUND)
 		"CPP=${COMMANDER3_CPP_COMPILER}" 
 		"CC=${MPI_C_COMPILER}" 
 		"MPICC=${MPI_C_COMPILER}" 
-		"./configure" 
+		#"./configure" 
+		"${CMAKE_DOWNLOAD_DIRECTORY}/fftw/src/fftw/configure" 
 		"--prefix=<INSTALL_DIR>")
 	# FLOAT
 	list(APPEND fftw_float_configure_command 
@@ -60,7 +61,8 @@ if(NOT FFTW_FOUND)
 		"CPP=${COMMANDER3_CPP_COMPILER}" 
 		"CC=${MPI_C_COMPILER}" 
 		"MPICC=${MPI_C_COMPILER}" 
-		"./configure" 
+		#"./configure" 
+		"${CMAKE_DOWNLOAD_DIRECTORY}/fftw/src/fftw_float/configure" 
 		"--prefix=<INSTALL_DIR>")
 	# First, we determine which component were found, so we can link them
 	# others will be compiled from source
@@ -105,7 +107,7 @@ if(NOT FFTW_FOUND)
 	#------------------------------------------------------------------------------
 	# Splitting external project add into 3 steps:
 	# 1. To download the project
-	# 2. To compile with single and double precision - requiores by GNU compilers
+	# 2. To compile with single and double precision - requires by GNU compilers
 	ExternalProject_Add(fftw
 		DEPENDS required_libraries
 		URL "${fftw_url}"

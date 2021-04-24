@@ -1535,5 +1535,25 @@ contains
 
   end subroutine compute_covariance_matrix
 
+  subroutine fit_polynomial(x, y, a)
+    implicit none
+
+    real(dp), dimension(1:),  intent(in) :: x, y
+    real(dp), dimension(0:),  intent(out) :: a
+
+    integer(i4b) :: i, j
+    real(dp), dimension(0:size(a)-1)              :: b
+    real(dp), dimension(0:size(a)-1, 0:size(a)-1) :: C
+
+    do i = 0, size(a)-1
+       b(i) = sum(y * x**i)
+       do j = i, size(a)-1
+          C(i,j) = sum(x**(i+j))
+          C(j,i) = C(i,j)
+       end do
+    end do
+    call solve_system_real(C, a, b)
+
+  end subroutine fit_polynomial
 
 end module math_tools

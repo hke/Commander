@@ -151,6 +151,7 @@ set(sources
 	${COMMANDER3_SOURCE_DIR}/spline_2D_mod.f90
 	${COMMANDER3_SOURCE_DIR}/comm_diffuse_comp_mod.f90
 	${COMMANDER3_SOURCE_DIR}/comm_nonlin_mod.f90
+        ${COMMANDER3_SOURCE_DIR}/comm_tod_adc_mod.f90
 	#progressbar_mod.f90
 	)
 

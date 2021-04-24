@@ -33,6 +33,10 @@ module comm_hdf_mod
      integer            :: status
   end type hdf_file
 
+  type :: byte_pointer
+   byte, dimension(:), allocatable :: p 
+  end type byte_pointer
+
   interface read_hdf
      module procedure read_hdf_0d_dp
      module procedure read_hdf_0d_sp
@@ -2546,6 +2550,67 @@ contains
     call h5dread_f(file%sethandle, dtype, f_ptr, file%status)
     call h5tclose_f(dtype, file%status)
   end subroutine read_hdf_opaque
+
+  subroutine read_hdf_vlen(file, setname, val)
+    implicit none
+    type(hdf_file) :: file
+    character(len=*),                 intent(in)  :: setname
+    type(byte_pointer), dimension(:), allocatable, intent(inout) :: val
+
+    INTEGER(HID_T)  :: filetype, memtype, space, dset ! Handles
+    INTEGER :: hdferr
+    INTEGER(HSIZE_T), DIMENSION(1:1)  :: maxdims, dims
+    INTEGER :: i, j
+
+    ! vl data
+    TYPE(hvl_t), dimension(:), allocatable, target :: rdata ! Pointer to vlen structures
+    TYPE(C_PTR) :: f_ptr
+ 
+    call open_hdf_set(file, setname)
+    call h5dget_type_f(file%sethandle, filetype, hdferr)
+    CALL h5dget_space_f(file%sethandle, space, hdferr)
+
+    CALL h5sget_simple_extent_dims_f(space, dims, maxdims, hdferr) 
+
+    allocate(rdata(dims(1)))    
+
+    CALL h5tvlen_create_f(H5T_STD_U8LE, memtype, hdferr)
+    f_ptr = C_LOC(rdata(1))
+    CALL h5dread_f(file%sethandle, memtype, f_ptr, hdferr)
+  !
+  ! Output the variable-length data to the screen.
+  !
+
+    DO i = 1, dims(1)
+     !WRITE(*,'(A,"(",I0,"):",/,"{")', ADVANCE="no") setname,i
+     CALL c_f_pointer(rdata(i)%p, val(i)%p, [rdata(i)%len] )
+     !DO j = 1, rdata(i)%len
+     !   WRITE(*,'(1X,I0)', ADVANCE='no') val(i)%p(j)
+     !   IF ( j .LT. rdata(i)%len) WRITE(*,'(",")', ADVANCE='no')
+     !ENDDO
+     !WRITE(*,'( " }")')
+    
+    ENDDO
+  !
+  ! Close and release resources.  Note the use of H5Dvlen_reclaim
+  ! removes the need to manually deallocate the previously allocated
+  ! data.
+  !
+  ! Not clear if this line is good or not. It could be de-allocating the read
+  ! memory that we are now pointing to, but I am not sure
+  !CALL h5dvlen_reclaim_f(memtype, space, H5P_DEFAULT_F, f_ptr, hdferr)
+  CALL h5dclose_f(dset , hdferr)
+  CALL h5sclose_f(space, hdferr)
+  CALL h5tclose_f(memtype, hdferr)
+
+end subroutine read_hdf_vlen
+
+
+
+
+
+
+
 
   subroutine read_hdf_string(file, setname, val)
     implicit none

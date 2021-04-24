@@ -42,6 +42,8 @@ def main():
 
     parser.add_argument('--beam-dir', type=str, action='store', help='path to the directory containing the beam alms', default='/mn/stornext/d16/cmbco/bp/data/beamalms/mainbeams')
 
+    parser.add_argument('--aux-dir', type=str, action='store', help='path to the auxilliary files directory', default='/mn/stornext/d16/cmbco/bp/data/auxiliary_data')
+
     args = parser.parse_args()
     outDir = args.out_dir
 
@@ -53,6 +55,8 @@ def main():
     beamDir = args.beam_dir
     
     inst_file = inst.commander_instrument(outDir, lfi.instrument_filename(version), version, 'w')
+
+    diode_weights = fits.open(os.path.join(args.aux_dir, 'diode_weights.fits'))
 
     for freq in lfi.freqs:
         bandNo = rimo.index_of('BANDPASS_0' + str(freq))
@@ -70,7 +74,7 @@ def main():
                 beamData_B = hp.read_alm(os.path.join(beamDir, 'mbib_DX12_LFI' + str(horn) + hornType + '.fits'), hdu=3)
 
                 beamType = 'y'
-                if hornType is 'S':
+                if hornType == 'S':
                     beamType = 'x'
 
                 slData, mmax_s = hp.read_alm(os.path.join(slDir, 'sl_0' + str(freq) + '_' + str(horn) + '_' + beamType + '_qucs-raa.alm'), return_mmax=True)
@@ -91,6 +95,26 @@ def main():
 
                 #central frequency
                 inst_file.add_field(prefix + '/centFreq', data=[lfi.cent_freqs[str(horn) + hornType]])
+
+                #diode weights
+                inst_file.add_field(prefix + '/diodeWeight', data=[diode_weights[1].data['weight'][diode_weights[1].data['detector_id'] == int(str(horn) + lfi.diodeTypes[hornType][0])]])
+
+                #per-diode fields
+                for diode in lfi.diodeTypes[hornType]:
+                    #adc response
+                    adc_91 = fits.open(os.path.join(args.aux_dir, 'adc_response_091_LFI' + str(horn) + hornType + '-' + diode + '.fits'))
+
+                    inst_file.add_matrix(prefix + '/adc91-'+diode, np.array([adc_91[1].data['sky_volt_in'], adc_91[1].data['sky_volt_out'], adc_91[1].data['load_volt_in'], adc_91[1].data['load_volt_out']]), ['sky_volt_in', 'sky_volt_out', 'load_volt_in', 'load_volt_out'])
+                
+                    adc_953 = fits.open(os.path.join(args.aux_dir, 'adc_response_953_LFI' + str(horn) + hornType + '-' + diode + '.fits'))
+                    
+                    inst_file.add_matrix(prefix + '/adc953-' + diode, np.array([adc_953[1].data['sky_volt_in'], adc_953[1].data['sky_volt_out'], adc_953[1].data['load_volt_in'], adc_953[1].data['load_volt_out']]), ['sky_volt_in', 'sky_volt_out', 'load_volt_in', 'load_volt_out'])
+
+                    #spike templates
+                    if freq == 44:
+                        spikes = fits.open(os.path.join(args.aux_dir, 'spikes_LFI' + str(horn) + hornType + '-' + diode + '.fits'))
+                        inst_file.add_matrix(prefix + '/spikes-' + diode, np.array([spikes[1].data['bin_start'], spikes[1].data['sky'], spikes[1].data['load']]), ['bin_start', 'sky', 'load'])
+
 
                 print(prefix)
 

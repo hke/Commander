@@ -37,6 +37,7 @@ def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('planck_dir', type=str, action='store', help='path to the legacy planck data in hdf format')
+    #/mn/stornext/d16/cmbco/bp/data
 
     parser.add_argument('--gains-dir', type=str, action='store', help='path to a directory with the initial gain estimates', default='/mn/stornext/d16/cmbco/bp/data/npipe_gains')
 
@@ -62,12 +63,15 @@ def main():
 
     parser.add_argument('--produce-filelist', action='store_true', default=False, help='force the production of a filelist even if only some files are present')
 
+    parser.add_argument('--differenced-data', action='store_true', default=False, help='store the differenced data produced by the DPC instead of the L1 data')
+
     in_args = parser.parse_args()
 
     in_args.version = 5
     if(in_args.no_compress):
         in_args.version = 4
-    
+    if(not in_args.differenced_data):
+        in_args.version += 2
     
     random.seed()
 
@@ -81,7 +85,7 @@ def main():
     manager = mp.Manager()
     dicts = {30:manager.dict(), 44:manager.dict(), 70:manager.dict()}
 
-    comm_tod = tod.commander_tod(in_args.out_dir, in_args.version, dicts, not in_args.restart)
+    comm_tod = tod.commander_tod(in_args.out_dir, 'LFI', in_args.version, dicts, not in_args.restart)
 
     x = [[pool.apply_async(make_od, args=[comm_tod, freq, od, in_args]) for freq in in_args.freqs] for od in ods]
 
@@ -149,6 +153,9 @@ def make_od(comm_tod, freq, od, args):
     #make detector names lookup
     comm_tod.add_field(prefix + '/det', np.string_(detNames[0:-2]))
 
+    diodeNames = 'M:sky00,ref00,sky01,ref01.S:sky10,ref10,sky11,ref11'
+    comm_tod.add_field(prefix + '/diodes', np.string_(diodeNames))
+
     #make polarization angle
     comm_tod.add_field(prefix + '/polang', polangs)
     comm_tod.add_attribute(prefix + '/polang', 'index', detNames[0:-2])
@@ -158,15 +165,16 @@ def make_od(comm_tod, freq, od, args):
     comm_tod.add_attribute(prefix + '/mbang', 'index', detNames[0:-2])
 
     try:
-        exFile = h5py.File(os.path.join(args.planck_dir, 'LFI_0' + str(freq) + '_' + str(lfi.horns[freq][0]) + '_L2_002_OD' + str(od).zfill(4) +'.h5'), 'r')
+        exFile = h5py.File(os.path.join(args.planck_dir, 'L2Data', 'LFI_0' + str(freq) + '_' + str(lfi.horns[freq][0]) + '_L2_002_OD' + str(od).zfill(4) +'.h5'), 'r')
     except (OSError):
-        print("Failed to open file " + os.path.join(args.planck_dir, 'LFI_0' + str(freq) + '_' + str(lfi.horns[freq][0]) + '_L2_002_OD' + str(od).zfill(4) +'.h5'))
+        print("Failed to open file " + os.path.join(args.planck_dir, 'L2Data', 'LFI_0' + str(freq) + '_' + str(lfi.horns[freq][0]) + '_L2_002_OD' + str(od).zfill(4) +'.h5'))
         return
 
     #per pid
     for pid, index in zip(exFile['AHF_info/PID'], range(len(exFile['AHF_info/PID']))):
         startIndex = np.where(exFile['Time/OBT'] > exFile['AHF_info/PID_start'][index])
         endIndex = np.where(exFile['Time/OBT'] > exFile['AHF_info/PID_end'][index])
+        #print(pid)
         if len(startIndex[0]) > 0:
             pid_start = startIndex[0][0]
         else:#catch days with no pids
@@ -176,6 +184,7 @@ def make_od(comm_tod, freq, od, args):
         else:#catch final pid per od
             pid_end = len(exFile['Time/OBT'])
         if pid_start == pid_end:#catch chunks with no data like od 1007
+            print('skipping pid ' + str(pid) + ' because it is empty')
             continue
 
         obt = exFile['Time/OBT'][pid_start]
@@ -213,9 +222,13 @@ def make_od(comm_tod, freq, od, args):
 
         #per detector fields
         for horn in lfi.horns[freq]:
-            fileName = h5py.File(os.path.join(args.planck_dir, 'LFI_0' + str(freq) + '_' + str(horn) + '_L2_002_OD' + str(od).zfill(4) +'.h5'), 'r')
-       
+            fileName = h5py.File(os.path.join(args.planck_dir, 'L2Data', 'LFI_0' + str(freq) + '_' + str(horn) + '_L2_002_OD' + str(od).zfill(4) +'.h5'), 'r')
+      
+            if(not args.differenced_data):
+                undiffFile = h5py.File(os.path.join(args.planck_dir, 'L1Data', 'LFI_0' + str(freq) + '_' + str(horn) + '_L1_OD' + str(od).zfill(4) + '.h5'), 'r')
+ 
             for hornType in lfi.hornTypes:
+                #print(horn, hornType)
                 prefix = str(pid).zfill(6) + '/' + str(horn) + hornType
 
                 #get RIMO index
@@ -289,16 +302,35 @@ def make_od(comm_tod, freq, od, args):
                 #make psd noise
                
                 #make tod data
-                tod = fileName[str(horn) + hornType +'/SIGNAL'][pid_start:pid_end]
-                todSigma = lfi.todSigma
-                todSigma[1]['sigma0'] = sigma0*gain[0]
-                compArray = [lfi.todDytpe, todSigma, lfi.huffTod]
-                if(args.no_compress or args.no_compress_tod):
-                    compArray = [lfi.todDytpe] 
-                comm_tod.add_field(prefix + '/tod', tod, compArray)
+                if(args.differenced_data):
+                    tod = fileName[str(horn) + hornType +'/SIGNAL'][pid_start:pid_end]
+                    todSigma = lfi.todSigma
+                    todSigma[1]['sigma0'] = sigma0*gain[0]
+                    compArray = [lfi.todDtype, todSigma, lfi.huffTod]
+                    if(args.no_compress or args.no_compress_tod):
+                        compArray = [lfi.todDtype] 
+                    comm_tod.add_field(prefix + '/tod', tod, compArray)
+                else: #undifferenced data
+               
+                    diode_list = []
+                    name_list = []
+ 
+                    for diode in lfi.diodeTypes[hornType]:
+                        ref = undiffFile[str(horn) + diode + '/REF'][pid_start:pid_end]
+                        diode_list.append(ref)
+                        name_list.append('ref'+diode)
+                        sky = undiffFile[str(horn) + diode + '/SKY'][pid_start:pid_end] 
+                        diode_list.append(sky)
+                        name_list.append('sky'+diode)
 
-                #undifferenced data? TODO
-        
+                    compArray = [lfi.todDtype, lfi.huffTod]
+                    if(args.no_compress or args.no_compress_tod):
+                        compArray = [lfi.todDtype]
+                    
+                    comm_tod.add_matrix(prefix + '/diodes', diode_list, name_list, compArray)
+                    
+
+ 
         comm_tod.finalize_chunk(pid, loadBalance=outAng)
     comm_tod.finalize_file()
 

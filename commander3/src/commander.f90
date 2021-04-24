@@ -78,7 +78,6 @@ program commander
   call MPI_Comm_size(MPI_COMM_WORLD, cpar%numprocs, ierr)
   
   cpar%root = 0
-    
   
   if (cpar%myid == cpar%root) call wall_time(t1)
   call read_comm_params(cpar)

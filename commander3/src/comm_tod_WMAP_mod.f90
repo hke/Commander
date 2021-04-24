@@ -56,11 +56,7 @@ module comm_tod_WMAP_mod
    type, extends(comm_tod) :: comm_WMAP_tod
       character(len=20), allocatable, dimension(:) :: labels ! names of fields
    contains
-      procedure     :: process_tod    => process_WMAP_tod
-      procedure     :: read_tod_inst  => read_tod_inst_WMAP
-      procedure     :: read_scan_inst => read_scan_inst_WMAP
-      procedure     :: initHDF_inst   => initHDF_WMAP
-      procedure     :: dumpToHDF_inst => dumpToHDF_WMAP
+      procedure     :: process_tod           => process_WMAP_tod
    end type comm_WMAP_tod
 
    interface comm_WMAP_tod
@@ -132,6 +128,7 @@ contains
       ! Set up WMAP specific parameters
       constructor%samprate_lowres = 1.d0  ! Lowres samprate in Hz
       constructor%nhorn           = 2
+      constructor%ndiode          = 1
       constructor%n_xi            = 3
       constructor%compressed_tod  = .true.
       constructor%correct_sl      = .false.
@@ -423,7 +420,7 @@ contains
          do j = 1, sd%ndet
             if (.not. self%scans(i)%d(j)%accept) cycle
             call self%compute_chisq(i, j, sd%mask(:,j), sd%s_sky(:,j), &
-              & sd%s_sl(:,j) + sd%s_orb(:,j), sd%n_corr(:,j), tod_arr=sd%tod)
+              & sd%s_sl(:,j) + sd%s_orb(:,j), sd%n_corr(:,j), sd%tod(:,j))
          end do
 
          ! Select data
@@ -585,101 +582,6 @@ contains
 
    end subroutine process_WMAP_tod
 
-
-  subroutine read_tod_inst_WMAP(self, file)
-    ! 
-    ! Reads WMAP-specific common fields from TOD fileset
-    ! 
-    ! Arguments:
-    ! ----------
-    ! self:     derived class (comm_WMAP_tod)
-    !           WMAP-specific TOD object
-    ! file:     derived type (hdf_file)
-    !           Already open HDF file handle; only root includes this
-    !
-    ! Returns
-    ! ----------
-    ! None, but updates self
-    !
-    implicit none
-    class(comm_WMAP_tod),                intent(inout)          :: self
-    type(hdf_file),                      intent(in),   optional :: file
-  end subroutine read_tod_inst_WMAP
-  
-  subroutine read_scan_inst_WMAP(self, file, slabel, detlabels, scan)
-    ! 
-    ! Reads WMAP-specific scan information from TOD fileset
-    ! 
-    ! Arguments:
-    ! ----------
-    ! self:     derived class (comm_WMAP_tod)
-    !           WMAP-specific TOD object
-    ! file:     derived type (hdf_file)
-    !           Already open HDF file handle
-    ! slabel:   string
-    !           Scan label, e.g., "000001/"
-    ! detlabels: string (array)
-    !           Array of detector labels, e.g., ["27M", "27S"]
-    ! scan:     derived class (comm_scan)
-    !           Scan object
-    !
-    ! Returns
-    ! ----------
-    ! None, but updates scan object
-    !
-    implicit none
-    class(comm_WMAP_tod),                intent(in)    :: self
-    type(hdf_file),                      intent(in)    :: file
-    character(len=*),                    intent(in)    :: slabel
-    character(len=*), dimension(:),      intent(in)    :: detlabels
-    class(comm_scan),                    intent(inout) :: scan
-  end subroutine read_scan_inst_WMAP
-
-  subroutine initHDF_WMAP(self, chainfile, path)
-    ! 
-    ! Initializes WMAP-specific TOD parameters from existing chain file
-    ! 
-    ! Arguments:
-    ! ----------
-    ! self:     derived class (comm_WMAP_tod)
-    !           WMAP-specific TOD object
-    ! chainfile: derived type (hdf_file)
-    !           Already open HDF file handle to existing chainfile
-    ! path:   string
-    !           HDF path to current dataset, e.g., "000001/tod/030"
-    !
-    ! Returns
-    ! ----------
-    ! None
-    !
-    implicit none
-    class(comm_WMAP_tod),                intent(inout)  :: self
-    type(hdf_file),                      intent(in)     :: chainfile
-    character(len=*),                    intent(in)     :: path
-  end subroutine initHDF_WMAP
-  
-  subroutine dumpToHDF_WMAP(self, chainfile, path)
-    ! 
-    ! Writes WMAP-specific TOD parameters to existing chain file
-    ! 
-    ! Arguments:
-    ! ----------
-    ! self:     derived class (comm_WMAP_tod)
-    !           WMAP-specific TOD object
-    ! chainfile: derived type (hdf_file)
-    !           Already open HDF file handle to existing chainfile
-    ! path:   string
-    !           HDF path to current dataset, e.g., "000001/tod/030"
-    !
-    ! Returns
-    ! ----------
-    ! None
-    !
-    implicit none
-    class(comm_WMAP_tod),                intent(in)     :: self
-    type(hdf_file),                      intent(in)     :: chainfile
-    character(len=*),                    intent(in)     :: path
-  end subroutine dumpToHDF_WMAP
 
 
 end module comm_tod_WMAP_mod
