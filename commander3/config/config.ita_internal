@@ -123,6 +123,6 @@ export HEALPIX_LINK := -L$(HEALPIX)/lib -lhealpix
 
 # =============== HDF ============================                              
 #export LOCAL=/mn/stornext/u3/hke/owl/local
-export HDF_LINK := -L$(LOCAL)/lib -lhdf5_fortran -lhdf5
-export HDF_LINK_CPP := -L$(LOCAL)/lib -lhdf5_cpp -lhdf5
-export HDF_INCLUDE := -I$(LOCAL)/include
+export HDF_LINK := -L$(LOCAL)/lib/shared -lhdf5_fortran -lhdf5 -lhdf5_f90cstub
+export HDF_LINK_CPP := -L$(LOCAL)/lib/shared -lhdf5_cpp -lhdf5 -lhdf5_f90cstub
+export HDF_INCLUDE := -I$(LOCAL)/include/shared
