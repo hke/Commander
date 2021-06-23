@@ -165,7 +165,6 @@ program commander
      write(*,*) '   Starting Gibbs sampling'
   end if
 
-
   ! Prepare chains 
   call init_chain_file(cpar, first_sample)
   !write(*,*) 'first', first_sample
@@ -251,7 +250,7 @@ program commander
            if (cpar%resamp_CMB .and. cpar%sample_powspec) call sample_joint_alm_Cl(handle)
         end do
      end if
-
+     
      ! Sample power spectra
      if (cpar%sample_powspec) call sample_powspec(handle, ok)
 

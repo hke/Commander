@@ -79,10 +79,12 @@ contains
     tol = TOLERANCE; if (present(tolerance_)) tol = tolerance_
     if (use_precomputed_grid_) then
        n    = size(x_in)
+       !write(*,*) "precompute: n=",n
        x_n(1:n) = x_in
        S_n(1:n) = lnL_in
     else
        n        = size(x_in)
+       !write(*,*) "not precomputed: n=",n
        x_n(1:n) = x_in
        if (present(lnL_in)) then
           ! Use pre-computed values to start grid
@@ -104,6 +106,7 @@ contains
        y_new = lnL(x_new)
        if (lnL0 > y_new) then
           call update_InvSamp_sample_set(prior_(1), lnL0, x_n, S_n, n, stat)
+!          write(*,*) "n after update_InvSamp_sample_set prior 1: ", n
        end if
 
        lnL0  = lnL(prior_(2))
@@ -111,6 +114,8 @@ contains
        y_new = lnL(x_new)
        if (lnL0 > y_new) then
           call update_InvSamp_sample_set(prior_(2), lnL0, x_n, S_n, n, stat)
+!          write(*,*) "update_InvSamp_sample_set prior_(2)", stat
+!          write(*,*) "n after update_InvSamp_sample_set: ", n
        end if
 
 
@@ -121,6 +126,7 @@ contains
              x_new = 0.5d0*(x_n(1)+prior_(1))
              y_new = lnL(x_new)
              call update_InvSamp_sample_set(x_new, y_new, x_n, S_n, n, stat)
+!             write(*,*) "n after update_InvSamp_sample_set peak bound: ", n
           end do
        end if
 
@@ -129,6 +135,7 @@ contains
              x_new = min(x_n(n) + 1.61803d0*(x_n(n)-x_n(n-1)), prior_(2))
              y_new = lnL(x_new)
              call update_InvSamp_sample_set(x_new, y_new, x_n, S_n, n, stat)
+             !write(*,*) "n after update_InvSamp_sample_set peak bound 2: ", n
           end do
        end if
        if (stat /= 0) then
@@ -146,6 +153,7 @@ contains
 !             prior_(1) = x_new 
 !          else
              call update_InvSamp_sample_set(x_new, y_new, x_n, S_n, n, stat)
+!             write(*,*) "n after update_InvSamp_sample_set wrong1: ", n
 !          end if
        end do
 
@@ -156,6 +164,7 @@ contains
 !             prior_(2) = x_new 
 !          else
              call update_InvSamp_sample_set(x_new, y_new, x_n, S_n, n, stat)
+!             write(*,*) "n after update_InvSamp_sample_set wrong 2: ", n
 !          end if
        end do
        if (stat /= 0) then
@@ -163,8 +172,8 @@ contains
           return
        end if
 
-!       write(*,*) x_n(1:n)
-!       write(*,*) S_n(1:n)
+       !write(*,*) x_n
+       !write(*,*) S_n
 
        ! Refine grid until we have a sufficiently accurate solution
        epsilon = 1.d30
@@ -183,6 +192,7 @@ contains
 !!$             end do
 !!$             close(78)
 !!$          end if
+          
           call spline(x_spline(1:n), S_spline(1:n), 1.d30, 1.d30, S_n2(1:n))
           do i = m, 2, -1
              if (lnL_peak-S_n(i-1) < DELTA_LNL .or. lnL_peak-S_n(i) < DELTA_LNL) then
@@ -190,8 +200,11 @@ contains
                 y_new        = lnL(x_new)
                 y_new_spline = splint(x_spline(1:m), S_spline(1:m), S_n2(1:m), x_new)
                 epsilon      = max(abs(y_new-y_new_spline), epsilon)
+                !write(*,*) "y_new-y_new_spline:", y_new-y_new_spline, tol
                 if (abs(y_new-y_new_spline) > tol) then
                    call update_InvSamp_sample_set(x_new, y_new, x_n, S_n, n, stat)
+                   !write(*,*) "x_new, y_new, x_n, S_n, n, stat: ", x_new, y_new, x_n, S_n, n, stat
+                   !write(*,*) "n after update_InvSamp_sample_set DELTA_LNL: ", n, i, m
                 end if
              end if
              if (stat /= 0) exit
@@ -210,6 +223,9 @@ contains
           if (stat /= 0) exit
        end do
     end if
+
+!    write(*,*) x_n(1:n)
+!    write(*,*) S_n(1:n)
 
     if (.false.) then
        write(*,*) 'n = ', n
@@ -328,6 +344,8 @@ contains
     if (n == INVSAMP_MAX_NUM_EVALS) then
        !write(*,*) 'InvSamp_mod -- sample set full. Increase INVSAMP_MAX_NUM_EVALS.'
        stat = stat+1
+!       write(*,*) "INVSAMP_MAX_NUM_EVALS", INVSAMP_MAX_NUM_EVALS
+!       write(*,*) "x_new, y_new, x, y, n, stat:", x_new, y_new, x, y, n, stat
        !stop
        return
     end if

@@ -104,13 +104,13 @@ contains
     constructor%samprate_lowres = 1.d0  ! Lowres samprate in Hz
     constructor%nhorn           = 1
     constructor%compressed_tod  = .false.
-    constructor%correct_sl      = .true.
-    constructor%orb_4pi_beam    = .true.
-    constructor%symm_flags      = .true.
-    constructor%chisq_threshold = 20.d0 ! 9.d0
+    constructor%correct_sl      = .false.
+    constructor%orb_4pi_beam    = .false.
+    constructor%symm_flags      = .false.
+    constructor%chisq_threshold = 1.d8 !20.d0 ! 9.d0
     constructor%nmaps           = info%nmaps
     constructor%ndet            = num_tokens(cpar%ds_tod_dets(id_abs), ",")
-
+    !write(*,*) cpar%ds_tod_dets(id_abs)
     nside_beam                  = 512
     nmaps_beam                  = 3
     pol_beam                    = .true.
@@ -118,6 +118,7 @@ contains
 
     ! Get detector labels
     call get_tokens(cpar%ds_tod_dets(id_abs), ",", constructor%label)
+    !write(*,*) cpar%ds_tod_dets(id_abs)
 
     ! Define detector partners
     do i = 1, constructor%ndet
@@ -204,7 +205,7 @@ contains
 
     real(dp)            :: t1, t2
     integer(i4b)        :: i, j, k, l, ierr, ndelta, nside, npix, nmaps
-    logical(lgt)        :: select_data, sample_abs_bandpass, sample_rel_bandpass, output_scanlist
+    logical(lgt)        :: select_data, sample_abs_bandpass, sample_rel_bandpass, output_scanlist, sample_gain
     type(comm_binmap)   :: binmap
     type(comm_scandata) :: sd
     character(len=4)    :: ctext, myid_text
@@ -246,7 +247,7 @@ contains
 
     ! Distribute maps
     allocate(map_sky(nmaps,self%nobs,0:self%ndet,ndelta))
-    call distribute_sky_maps(self, map_in, 1.e-6, map_sky) ! uK to K
+    call distribute_sky_maps(self, map_in, 1., map_sky) ! uK to K, already in K
 
     ! Distribute processing masks
     allocate(m_buf(0:npix-1,nmaps), procmask(0:npix-1), procmask2(0:npix-1))

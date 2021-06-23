@@ -183,6 +183,8 @@ contains
           constructor%Dl(:,TT)     = 0.d0
           if (constructor%nspec == 6) constructor%Dl(:,[TE,TB]) = 0.d0
        end if
+       write(*,*) "lmax:", constructor%lmax
+       write(*,*) constructor%Dl(:10,BB)
     else if (trim(constructor%type) == 'power_law') then
        allocate(constructor%amp(nmaps), constructor%beta(nmaps))
        constructor%lpiv          = cpar%cs_lpivot(id_abs)
@@ -216,7 +218,6 @@ contains
     end if
     constructor%Dl(0:1,2:constructor%nspec) = 0.d0
     constructor%Dl(0:constructor%lmin-1,:)  = 0.d0
-
     !constructor%Dl = constructor%Dl / c%RJ2unit_    ! Define prior in output units
     call constructor%updateS
     
@@ -515,7 +516,7 @@ contains
           end if
        end do
        close(unit2)
-
+       !write(*,*) "Dl_in:", self%Dl
        ! Spline spectra
        do j = 1, 6
           if (.not. self%active_lookup(j)) cycle
@@ -772,7 +773,6 @@ contains
             & write(*,*) 'Warning: Input spectrum file ' // trim(clfile) &
             & // ' has vanishing monopole'
     end if
-    
   end subroutine read_Cl_file
 
   subroutine binCls(self)
@@ -1020,7 +1020,7 @@ contains
 
     ! Local parameters for lnL
     integer(i4b) :: lmin, lmax, spec, p1, p2
-
+    
     allocate(sigma_l(self%nmaps,self%nmaps,0:self%lmax))
     allocate(ln_det_sigma_l(0:self%lmax))
 
@@ -1041,6 +1041,7 @@ contains
        do i = 1, self%nbin2
           call sample_Dl_bin(self%bins2(i), handle, ok)
 !          write(*,*) i, self%bins2(i)%lmin, self%Dl(self%bins2(i)%lmin,1)
+!          write(*,*) "ok", ok
        end do
     end if
 
@@ -1056,9 +1057,9 @@ contains
 !!$    end if
 !!$    call mpi_finalize(ierr)
 !!$    stop
-
+    
     deallocate(sigma_l, ln_det_sigma_l)
-
+    
   contains
 
     subroutine sample_Dl_lookup(handle, ok)
@@ -1164,7 +1165,10 @@ contains
             prior    = [0.d0, 1.d5]
          else
             prior    = [-1.d5, 1.d5]
-            do l = bin%lmin, bin%lmax
+            do l = bin%lmin, bin%lmax 
+               write(*,*) "l:", l
+               write(*,*) "lmin:", bin%lmin, "lmax:", bin%lmax 
+               !write(*,*) "bin%spec", bin%spec
                select case (bin%spec)
                case (1)
                   prior(1) = max(prior(1), self%Dl(l,2)**2/self%Dl(l,4))
@@ -1175,11 +1179,16 @@ contains
                   prior(1) = max(prior(1), -sqrt(self%Dl(l,1)*self%Dl(l,6)))
                   prior(2) = min(prior(2),  sqrt(self%Dl(l,1)*self%Dl(l,6)))
                case (4)
-                  prior(1) = max(prior(1), self%Dl(l,2)**2/self%Dl(l,1))
+                  if (self%Dl(l,1) /= 0) then
+                     prior(1) = max(prior(1), self%Dl(l,2)**2/self%Dl(l,1))
+!                  else 
+!                     prior(1) = 0.
+                  end if
                case (5)
                   prior(1) = max(prior(1), -sqrt(self%Dl(l,4)*self%Dl(l,6)))
                   prior(2) = min(prior(2),  sqrt(self%Dl(l,4)*self%Dl(l,6)))
                case (6)
+                  !write(*,*) "case(6) prior(1)", prior(1)
                   prior(1) = max(prior(1), 0.d0)
                end select
             end do
@@ -1190,17 +1199,20 @@ contains
 
          ! Draw sample
          lmin=bin%lmin; lmax=bin%lmax; spec=bin%spec; p1=bin%p1; p2=bin%p2
+         !write(*,*) "prior(1)=", real(prior(1), sp), "prior(2)=", real(prior(2),sp)
+         !write(*,*) "Dl:", real(DL_in, sp)
          Dl_prop = sample_InvSamp(handle, Dl_in, lnL_invWishart, prior, status)
       
          ! Update
-         write(*,*) lmin, lmax, Dl_prop, status
+         !write(*,*) lmin, lmax, Dl_prop, status
          !stop
          if (status == 0) then
             self%Dl(bin%lmin:bin%lmax,bin%spec) = Dl_prop
          else
             ok = .false.
+            write(*,*) lmin, lmax
          end if
-
+          write(*,*) lmin, lmax, ok
       end if
 
       ! Sample all sub-bins

@@ -238,7 +238,7 @@ contains
           &    vnorm(2)*vnorm(2)*self%orb_dp_s(det,7) + &
           &    vnorm(2)*vnorm(3)*self%orb_dp_s(det,8) + &
           &    vnorm(3)*vnorm(3)*self%orb_dp_s(det,9))
-
+    write(*,*) "orb_dp", self%orb_dp_s(det,:)
     prod = T_CMB*prod/self%orb_dp_s(det,10)
 
   end function compute_4pi_product

@@ -454,8 +454,6 @@ contains
        !TODO: figure out how to make this work
        call read_hdf_string2(file, "/common/det",    det_buf, n)
        !call read_hdf(file, "/common/det",    det_buf)
-       !write(det_buf, *) "27M, 27S, 28M, 28S"
-       !write(det_buf, *) "18M, 18S, 19M, 19S, 20M, 20S, 21M, 21S, 22M, 22S, 23M, 23S"
        ndet_tot = num_tokens(det_buf(1:n), ",")
        allocate(polang_buf(ndet_tot), mbang_buf(ndet_tot), dets(ndet_tot))
        polang_buf = 0
@@ -463,9 +461,9 @@ contains
        self%polang = 0
        self%mbang = 0
        call get_tokens(trim(adjustl(det_buf(1:n))), ',', dets)
-!!$       do i = 1, ndet_tot
-!!$          write(*,*) i, trim(adjustl(dets(i)))
-!!$       end do
+!       do i = 1, ndet_tot
+!          write(*,*) i, trim(adjustl(dets(i)))
+!       end do
        !write(*,*) ndet_tot
        call read_hdf(file, "common/nside",  self%nside)
        if(self%nside /= self%nside_param) then
@@ -477,9 +475,9 @@ contains
        call read_hdf(file, "common/polang", polang_buf, opt=.true.)
        call read_hdf(file, "common/mbang",  mbang_buf, opt=.true.)
 
-!!$          do j = 1, ndet_tot
-!!$             write(*,*) j, trim(dets(j))
-!!$          end do
+!       do j = 1, ndet_tot
+!          write(*,*) j, trim(dets(j))
+!       end do
 
        do i = 1, self%ndet
           do j = 1, ndet_tot
