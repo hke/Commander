@@ -892,7 +892,7 @@ contains
                    s_buf(:,j) = real(self%gain0(0) + self%scans(i)%d(j)%dgain,sp) * s_tot(:, j)
                 end if
              end do
-             call accumulate_abscal(self, i, mask, s_buf, s_lowres, s_invN, A_abscal, b_abscal, handle, .false.)
+             call accumulate_abscal(self, i, mask, s_buf, s_invN, A_abscal, b_abscal, handle, .false.)
 
              if (.false.) then
                 call int2string(self%scanid(i), scantext)
@@ -910,7 +910,7 @@ contains
           ! Fit gain 
           if (do_oper(samp_G)) then
              call wall_time(t1)
-             call calculate_gain_mean_std_per_scan(self, i, s_invN, mask, s_lowres, s_tot, handle)
+             call calculate_gain_mean_std_per_scan(self, i, s_invN, mask, s_tot, handle)
              call wall_time(t2); t_tot(4) = t_tot(4) + t2-t1
           end if
 

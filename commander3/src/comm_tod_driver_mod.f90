@@ -464,7 +464,7 @@ contains
     integer(i4b) :: i, j, ext(2), ierr
     real(dp)     :: t1, t2
     real(dp), allocatable, dimension(:)   :: A, b
-    real(sp), allocatable, dimension(:,:) :: s_invN, mask_lowres, s_buf
+    real(sp), allocatable, dimension(:,:) :: s_invsqrtN, mask_lowres, s_buf
     real(dp), allocatable, dimension(:,:) :: dipole_mod
     type(comm_scandata) :: sd
 
@@ -494,7 +494,7 @@ contains
 
        ! Set up filtered calibration signal, conditional contribution and mask
        call tod%downsample_tod(sd%s_orb(:,1), ext)
-       allocate(s_invN(ext(1):ext(2), tod%ndet))      ! s * invN
+       allocate(s_invsqrtN(ext(1):ext(2), tod%ndet))      ! s * invN
        allocate(s_buf(sd%ntod, sd%ndet))
        allocate(mask_lowres(ext(1):ext(2), tod%ndet))
        do j = 1, tod%ndet
@@ -502,25 +502,25 @@ contains
           call tod%downsample_tod(sd%mask(:,j), ext, mask_lowres(:,j), threshold=0.9)
           if (trim(mode) == 'abscal' .and. tod%orb_abscal) then
              ! Calibrator = orbital dipole only
-             call tod%downsample_tod(sd%s_orb(:,j), ext, s_invN(:,j))
+             call tod%downsample_tod(sd%s_orb(:,j), ext, s_invsqrtN(:,j))
           else if (trim(mode) == 'imbal' .and. tod%orb_abscal) then
              ! Calibrator = common mode signal
              ! Jarosik uses the orbital dipole for this.
              s_buf(:,j) = tod%scans(i)%d(j)%gain*(sd%s_orbA(:,j) + sd%s_orbB(:,j))
              call fill_all_masked(s_buf(:,j), sd%mask(:,j), sd%ntod, .false., &
                & real(tod%scans(i)%d(j)%N_psd%sigma0, sp), handle, tod%scans(i)%chunk_num)
-             call tod%downsample_tod(s_buf(:,j), ext, s_invN(:,j))
+             call tod%downsample_tod(s_buf(:,j), ext, s_invsqrtN(:,j))
           else if (trim(mode) == 'imbal' .and. .not. tod%orb_abscal) then
              ! Calibrator = common mode signal
              s_buf(:,j) = tod%scans(i)%d(j)%gain*(sd%s_totA(:,j) + sd%s_totB(:,j))
              call fill_all_masked(s_buf(:,j), sd%mask(:,j), sd%ntod, .false., &
                & real(tod%scans(i)%d(j)%N_psd%sigma0, sp), handle, tod%scans(i)%chunk_num)
-             call tod%downsample_tod(s_buf(:,j), ext, s_invN(:,j))
+             call tod%downsample_tod(s_buf(:,j), ext, s_invsqrtN(:,j))
           else
              ! Calibrator = total signal
              s_buf(:,j) = sd%s_tot(:,j)
              call fill_all_masked(s_buf(:,j), sd%mask(:,j), sd%ntod, .false., real(tod%scans(i)%d(j)%N_psd%sigma0, sp), handle, tod%scans(i)%chunk_num)
-             call tod%downsample_tod(s_buf(:,j), ext, s_invN(:,j))
+             call tod%downsample_tod(s_buf(:,j), ext, s_invsqrtN(:,j))
           end if
        end do
        !do j = 1, tod%ndet
@@ -528,7 +528,7 @@ contains
        !        write(*,*) 'abscaltest1', j, 'sum(s(:,j))', sum(s_invN(:,j))
        !      end if
        !end do
-       call multiply_inv_N(tod, i, s_invN, sampfreq=tod%samprate_lowres, pow=0.5d0)
+       call multiply_inv_N(tod, i, s_invsqrtN, sampfreq=tod%samprate_lowres, pow=0.5d0)
        !do j = 1, tod%ndet
        !      if (tod%scanid(i) == 30) then
        !        write(*,*) 'abscaltest2', j, 'sum(s_invN(:,j))', sum(s_invN(:,j))
@@ -557,19 +557,19 @@ contains
              end if
           end do
           if (tod%compressed_tod) then
-            call accumulate_abscal(tod, i, sd%mask, s_buf, s_invN, s_invN, A, b, handle, &
+            call accumulate_abscal(tod, i, sd%mask, s_buf, s_invsqrtN, A, b, handle, &
               & out=.true., mask_lowres=mask_lowres, tod_arr=sd%tod)
           else
-            call accumulate_abscal(tod, i, sd%mask, s_buf, s_invN, s_invN, A, b, handle, &
+            call accumulate_abscal(tod, i, sd%mask, s_buf, s_invsqrtN, A, b, handle, &
               & out=.true., mask_lowres=mask_lowres)
           end if
        else
           ! Time-variable gain terms
           if (tod%compressed_tod) then
-            call calculate_gain_mean_std_per_scan(tod, i, s_invN, sd%mask, s_invN, sd%s_tot, &
+            call calculate_gain_mean_std_per_scan(tod, i, s_invsqrtN, sd%mask, sd%s_tot, &
               & handle, mask_lowres=mask_lowres, tod_arr=sd%tod)
           else
-            call calculate_gain_mean_std_per_scan(tod, i, s_invN, sd%mask, s_invN, sd%s_tot, &
+            call calculate_gain_mean_std_per_scan(tod, i, s_invsqrtN, sd%mask, sd%s_tot, &
               & handle, mask_lowres=mask_lowres)
           end if
           do j = 1, tod%ndet
@@ -583,7 +583,7 @@ contains
        tod%scans(i)%proctime   = tod%scans(i)%proctime   + t2-t1
        tod%scans(i)%n_proctime = tod%scans(i)%n_proctime + 1
        call sd%dealloc
-       deallocate(s_invN, s_buf, mask_lowres)
+       deallocate(s_invsqrtN, s_buf, mask_lowres)
     end do
 
     ! Perform sampling operations

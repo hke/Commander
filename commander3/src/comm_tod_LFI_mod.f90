@@ -308,6 +308,7 @@ contains
     call sample_calibration(self, 'abscal', handle, map_sky, procmask, procmask2)
     call sample_calibration(self, 'relcal', handle, map_sky, procmask, procmask2)
     call sample_calibration(self, 'deltaG', handle, map_sky, procmask, procmask2)
+    call sample_gain_psd(self, handle)
 
     ! Prepare intermediate data structures
     call binmap%init(self, .true., sample_rel_bandpass)

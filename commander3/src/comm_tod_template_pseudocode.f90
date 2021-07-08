@@ -102,13 +102,13 @@ module comm_tod_TEMPLATE_mod
                      s_buf(:,j) = real(self%gain0(0) + self%scans(i)%d(j)%dgain,sp) * s_tot(:, j)
                   end if
                end do
-               call accumulate_abscal(self, i, mask, s_buf, s_lowres, s_invN, A_abscal, b_abscal, handle)
+               call accumulate_abscal(self, i, mask, s_buf, s_invN, A_abscal, b_abscal, handle)
 
             end if
 
             ! Fit gain
             if (do_oper(samp_G)) then
-               call calculate_gain_mean_std_per_scan(self, i, s_invN, mask, s_lowres, s_tot, handle)
+               call calculate_gain_mean_std_per_scan(self, i, s_invN, mask, s_tot, handle)
             end if
 
             ! Fit correlated noise

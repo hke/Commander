@@ -157,6 +157,12 @@ module comm_tod_mod
      integer(i4b)                                      :: nside_beam
      integer(i4b)                                      :: verbosity ! verbosity of output
      integer(i4b),       allocatable, dimension(:,:)   :: jumplist  ! List of stationary periods (ndet,njump+2)
+     ! Gain parameters
+     real(dp), allocatable, dimension(:)     :: gain_sigma_0  ! size(ndet), the estimated white noise level of that scan. Not truly a white noise since our model is sigma_0**2 * (f/fknee)**alpha instead of sigma_0 ** 2 (1 + f/fknee ** alpha)
+     real(dp), allocatable, dimension(:)    :: gain_fknee ! size(ndet)
+     real(dp), allocatable, dimension(:)    :: gain_alpha ! size(ndet)
+     real(dp) :: gain_fknee_std ! std for metropolis-hastings sampling
+     real(dp) :: gain_alpha_std ! std for metropolis-hastings sampling
    contains
      procedure                           :: read_tod
      procedure(read_tod_inst), deferred  :: read_tod_inst
@@ -379,6 +385,17 @@ contains
     end if
     allocate(self%bp_delta(0:self%ndet,ndelta))
     self%bp_delta = 0.d0
+
+    !Allocate and initialize gain structures
+    allocate(self%gain_sigma_0(self%ndet))
+    ! To be initialized at first call
+    self%gain_sigma_0 = -1.d0
+    allocate(self%gain_fknee(self%ndet))
+    allocate(self%gain_alpha(self%ndet))
+    self%gain_fknee =  0.002d0 / (60.d0 * 60.d0) ! In seconds - this value is not necessarily set in stone and will be updated over the course of the run.
+    self%gain_alpha =  -1.d0 ! This value is not necessarily set in stone and will be updated over the course of the run.
+    self%gain_fknee_std = abs(self%gain_fknee(1) * 0.01)
+    self%gain_alpha_std = abs(self%gain_alpha(1) * 0.01)
 
     ! Allocate orbital dipole object; this should go in the experiment files, since it must be done after beam init
     !allocate(self%orb_dp)
@@ -970,45 +987,45 @@ contains
          end do
 
        ! Sort according to weight
-       pweight = 0.d0
-       w_tot = sum(weight)
-       call QuickSort(id, weight)
-       do i = n_tot, 1, -1
-          ind             = minloc(pweight)-1
-          proc(id(i))     = ind(1)
-          pweight(ind(1)) = pweight(ind(1)) + weight(i)
-       end do
+!!$       pweight = 0.d0
+!!$       w_tot = sum(weight)
+!!$       call QuickSort(id, weight)
+!!$       do i = n_tot, 1, -1
+!!$          ind             = minloc(pweight)-1
+!!$          proc(id(i))     = ind(1)
+!!$          pweight(ind(1)) = pweight(ind(1)) + weight(i)
+!!$       end do
 !!$       deallocate(id, pweight, weight)
 
        ! Sort according to scan id
-!!$         proc    = -1
-!!$         call QuickSort(id, sid)
-!!$         w_tot = sum(weight)
-!!$         w_curr = 0.d0
-!!$         j     = 1
-!!$         do i = np-1, 1, -1
-!!$            w = 0.d0
-!!$            do k = 1, n_tot
-!!$               if (proc(k) == i) w = w + weight(k) 
-!!$            end do
-!!$            do while (w < real(np-1,sp)/real(np,sp)*w_tot/np .and. j <= n_tot)
-!!$               proc(id(j)) = i
-!!$               w           = w + weight(id(j))
-!!$               if (w > 1.2d0*w_tot/np) then
-!!$                  ! Assign large scans to next core
-!!$                  proc(id(j)) = i-1
-!!$                  w           = w - weight(id(j))
-!!$               end if
-!!$               j           = j+1
-!!$            end do
+         proc    = -1
+         call QuickSort(id, sid)
+         w_tot = sum(weight)
+         w_curr = 0.d0
+         j     = 1
+         do i = np-1, 1, -1
+            w = 0.d0
+            do k = 1, n_tot
+               if (proc(k) == i) w = w + weight(k) 
+            end do
+            do while (w < w_tot/np .and. j <= n_tot)
+               proc(id(j)) = i
+               w           = w + weight(id(j))
+               if (w > 1.2d0*w_tot/np) then
+                  ! Assign large scans to next core
+                  proc(id(j)) = i-1
+                  w           = w - weight(id(j))
+               end if
+               j           = j+1
+            end do
 !!$            if (w_curr > i*w_tot/np) then
 !!$               proc(id(j-1)) = i-1
 !!$            end if
-!!$         end do
-!!$         do while (j <= n_tot)
-!!$            proc(id(j)) = 0
-!!$            j = j+1
-!!$         end do
+         end do
+         do while (j <= n_tot)
+            proc(id(j)) = 0
+            j = j+1
+         end do
          pweight = 0.d0
          do k = 1, n_tot
             pweight(proc(id(k))) = pweight(proc(id(k))) + weight(id(k))
@@ -1148,6 +1165,9 @@ contains
        call write_hdf(chainfile, trim(adjustl(path))//'x_im',   [self%x_im(1), self%x_im(3)])
        call write_hdf(chainfile, trim(adjustl(path))//'mono',   self%mono)
        call write_hdf(chainfile, trim(adjustl(path))//'bp_delta', self%bp_delta)
+       call write_hdf(chainfile, trim(adjustl(path))//'gain_sigma_0', self%gain_sigma_0)
+       call write_hdf(chainfile, trim(adjustl(path))//'gain_fknee', self%gain_fknee)
+       call write_hdf(chainfile, trim(adjustl(path))//'gain_alpha', self%gain_alpha)
     end if
 
     call map%writeMapToHDF(chainfile, path, 'map')
@@ -1188,6 +1208,9 @@ contains
        call read_hdf(chainfile, trim(adjustl(path))//'mono',     self%mono)
        call read_hdf(chainfile, trim(adjustl(path))//'bp_delta', self%bp_delta)
        call read_hdf(chainfile, trim(adjustl(path))//'gain0',    self%gain0)
+       call read_hdf(chainfile, trim(adjustl(path))//'gain_sigma_0',    self%gain_sigma_0)
+       call read_hdf(chainfile, trim(adjustl(path))//'gain_fknee',    self%gain_fknee)
+       call read_hdf(chainfile, trim(adjustl(path))//'gain_alpha',    self%gain_alpha)
        !write(*,*) 'bp =', self%bp_delta
        ! Redefine gains; should be removed when proper initfiles are available
 !!$       self%gain0(0) = sum(output(:,:,1))/count(output(:,:,1)>0.d0)
@@ -1206,6 +1229,12 @@ contains
     call mpi_bcast(self%mono, size(self%mono), MPI_DOUBLE_PRECISION, 0, &
          & self%comm, ierr)
     call mpi_bcast(self%gain0, size(self%gain0), MPI_DOUBLE_PRECISION, 0, &
+         & self%comm, ierr)
+    call mpi_bcast(self%gain_sigma_0, size(self%gain_sigma_0), MPI_DOUBLE_PRECISION, 0, &
+         & self%comm, ierr)
+    call mpi_bcast(self%gain_fknee, size(self%gain_fknee), MPI_DOUBLE_PRECISION, 0, &
+         & self%comm, ierr)
+    call mpi_bcast(self%gain_alpha, size(self%gain_alpha), MPI_DOUBLE_PRECISION, 0, &
          & self%comm, ierr)
 
     do j = 1, self%ndet
